@@ -1,59 +1,48 @@
 const API = 'http://localhost:3000/api'
-
 const getToken = () => localStorage.getItem('token')
+const h = () => ({ 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` })
+const authH = () => ({ Authorization: `Bearer ${getToken()}` })
 
-const headers = () => ({
-  'Content-Type': 'application/json',
-  'Authorization': `Bearer ${getToken()}`
-})
+const req = (url, opts = {}) =>
+  fetch(`${API}${url}`, opts).then(async r => {
+    const data = await r.json()
+    if (!r.ok) throw new Error(data.error || 'Request failed')
+    return data
+  })
 
 export const api = {
-  // Auth
-  signup: (data) => fetch(`${API}/signup`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
-  }).then(r => r.json()),
+  signup: (data) => req('/signup', { method: 'POST', headers: h(), body: JSON.stringify(data) }),
+  login: (data) => req('/login', { method: 'POST', headers: h(), body: JSON.stringify(data) }),
 
-  login: (data) => fetch(`${API}/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
-  }).then(r => r.json()),
+  uploadFile: (file, onProgress) => {
+    return new Promise((resolve, reject) => {
+      const formData = new FormData()
+      formData.append('file', file)
+      const xhr = new XMLHttpRequest()
+      xhr.open('POST', `${API}/upload`)
+      xhr.setRequestHeader('Authorization', `Bearer ${getToken()}`)
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100))
+      }
+      xhr.onload = () => {
+        const data = JSON.parse(xhr.responseText)
+        xhr.status === 200 ? resolve(data) : reject(new Error(data.error))
+      }
+      xhr.onerror = () => reject(new Error('Upload failed'))
+      xhr.send(formData)
+    })
+  },
 
-  // Notes
-  getNotes: () => fetch(`${API}/notes`, { headers: headers() }).then(r => r.json()),
-  saveNote: (data) => fetch(`${API}/notes`, {
-    method: 'POST',
-    headers: headers(),
-    body: JSON.stringify(data)
-  }).then(r => r.json()),
-  deleteNote: (id) => fetch(`${API}/notes/${id}`, { 
-    method: 'DELETE',
-    headers: headers()
-  }).then(r => r.json()),
+  getNotes: () => req('/notes', { headers: h() }),
+  saveNote: (data) => req('/notes', { method: 'POST', headers: h(), body: JSON.stringify(data) }),
+  deleteNote: (id) => req(`/notes/${id}`, { method: 'DELETE', headers: h() }),
 
-  // Quizzes
-  getQuizzes: () => fetch(`${API}/quizzes`, { headers: headers() }).then(r => r.json()),
-  saveQuiz: (data) => fetch(`${API}/quizzes`, {
-    method: 'POST',
-    headers: headers(),
-    body: JSON.stringify(data)
-  }).then(r => r.json()),
+  getQuizzes: () => req('/quizzes', { headers: h() }),
+  saveQuiz: (data) => req('/quizzes', { method: 'POST', headers: h(), body: JSON.stringify(data) }),
 
-  // Classrooms
-  getClassrooms: () => fetch(`${API}/classrooms`).then(r => r.json()),
-  createClassroom: (data) => fetch(`${API}/classrooms`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
-  }).then(r => r.json()),
-  joinClassroom: (code) => fetch(`${API}/classrooms/join`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code })
-  }).then(r => r.json()),
+  getClassrooms: () => req('/classrooms', { headers: authH() }),
+  createClassroom: (data) => req('/classrooms', { method: 'POST', headers: h(), body: JSON.stringify(data) }),
+  joinClassroom: (code) => req('/classrooms/join', { method: 'POST', headers: h(), body: JSON.stringify({ code }) }),
 
-  // Stats
-  getStats: () => fetch(`${API}/stats`, { headers: headers() }).then(r => r.json())
+  getStats: () => req('/stats', { headers: h() }),
 }
