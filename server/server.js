@@ -18,7 +18,8 @@ app.use(cors())
 app.use(express.json({ limit: '10mb' }))
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')))
 
-const JWT_SECRET = process.env.JWT_SECRET || 'change-in-production'
+const JWT_SECRET = process.env.JWT_SECRET
+if (!JWT_SECRET) throw new Error('JWT_SECRET is not set in .env')
 const UPLOAD_DIR = path.join(__dirname, 'uploads')
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true })
 
